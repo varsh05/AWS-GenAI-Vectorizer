@@ -1,59 +1,34 @@
-<<<<<<< HEAD
-# 🔍 AWS Bedrock Embedding App using Streamlit And LangChain
+# 🔍 AWS-GenAI-Vectorizer
 
-A simple Streamlit application that uses **AWS Bedrock** and **LangChain** to generate vector embeddings for user input text. This app demonstrates how to integrate AWS Bedrock's `amazon.titan-embed-text-v1` model for NLP tasks using the `langchain_community` library.
-
----
-
-##✨ Features
-
-- 🔐 Secure connection to AWS via `boto3`
-- 🧠 Text vectorization using `amazon.titan-embed-text-v1`
-- 📊 Embedding results displayed in real-time
-- 🧱 Modular and extendable for chatbots, vector DBs, and more
-
+A production-grade Generative AI application that integrates **AWS Bedrock**, **Amazon SageMaker**, **Hugging Face**, and **LangChain** to perform **text vectorization** and **question answering** using state-of-the-art foundation models.  
+Deployed via a user-friendly **Streamlit interface**, the project is designed to showcase real-world applications of **LLMs** in enterprise search and NLP pipelines.
 
 ---
 
-##🖼️ App Screenshot
+## 🚀 Why This Project Matters
 
-<img src="C:\Users\Varsha\OneDrive\Pictures\Screenshots\Screenshot 2025-07-24 234118.png" alt="App Screenshot" width="700"/>
+Modern search engines, chatbots, and virtual assistants rely heavily on **text embeddings** and **contextual understanding**.  
+This project replicates a real-world use case by combining:
 
+- **Vectorization (via Titan Embeddings)** — for downstream retrieval, classification, and clustering tasks.
+- **Question Answering (via SageMaker Deployed LLM)** — for extracting exact answers from custom user-provided contexts.
 
----
-## 📂 Project Structure
-
-aws-bedrock-embedding-app/
-├── app.py # Streamlit application
-├── requirements.txt # Python dependencies
-└── README.md # Project documentation
-=======
-# 🔍 AWS Bedrock Embedding App using Streamlit And LangChain
-
-A simple Streamlit application that uses **AWS Bedrock** and **LangChain** to generate vector embeddings for user input text. This app demonstrates how to integrate AWS Bedrock's `amazon.titan-embed-text-v1` model for NLP tasks using the `langchain_community` library.
+> ✅ Perfect for showcasing end-to-end GenAI and AWS skills in a single, clean, deployable package.
 
 ---
 
-##✨ Features
+## 🧠 Core Highlights
 
-- 🔐 Secure connection to AWS via `boto3`
-- 🧠 Text vectorization using `amazon.titan-embed-text-v1`
-- 📊 Embedding results displayed in real-time
-- 🧱 Modular and extendable for chatbots, vector DBs, and more
-
-
----
-
-##🖼️ App Screenshot
-
-<img src="C:\Users\Varsha\OneDrive\Pictures\Screenshots\Screenshot 2025-07-24 234118.png" alt="App Screenshot" width="700"/>
-
+| Module                     | Tech Stack                                      | Purpose                                           |
+|----------------------------|--------------------------------------------------|---------------------------------------------------|
+| `Text Embedding`           | AWS Bedrock (`amazon.titan-embed-text-v1`)     | Converts raw text into high-dimensional vectors   |
+| `QA Model Deployment`      | Amazon SageMaker + Hugging Face Transformers   | Answers user queries from provided context        |
+| `Orchestration`            | LangChain                                      | Prompts, pipelines, and embedding integration     |
+| `Frontend`                 | Streamlit                                      | Simple interactive UI                             |
 
 ---
-## 📂 Project Structure
 
-aws-bedrock-embedding-app/
-├── app.py # Streamlit application
-├── requirements.txt # Python dependencies
-└── README.md # Project documentation
->>>>>>> 5c8aae70 (sagemaker)
+## 💻 Demo: What It Does
+
+- 🔹 **Text Vectorizer Tab**  
+  → Enter any sentence or paragraph and instantly generate its
