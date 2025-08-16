@@ -1,148 +1,80 @@
-
-import json
+# app.py
 import os
-import sys
-import boto3
 import streamlit as st
+from vector_store import create_vector_store, load_vector_store, DATA_DIR, INDEX_DIR, ensure_dirs
+from rag_pipeline import run_rag
+from models.claude import get_claude_llm
+from models.llama2 import get_llama2_llm
 
-## We will be using Titan Embeddings Model To generate Embedding
+# Streamlit Page Config
+st.set_page_config(page_title="Chat with PDF | Bedrock RAG", layout="wide")
+st.title("💬 Chat with your PDFs — AWS Bedrock + LangChain (RAG)")
 
-from langchain_community.embeddings import BedrockEmbeddings
-from langchain.llms.bedrock import Bedrock
+# Ensure required directories exist
+ensure_dirs()
 
-## Data Ingestion
+# Sidebar - Document Management
+with st.sidebar:
+    st.header("📄 Manage Documents")
 
-import numpy as np
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFDirectoryLoader
+    # Upload PDFs
+    uploaded = st.file_uploader("Upload PDF(s)", type=["pdf"], accept_multiple_files=True)
+    if uploaded:
+        for f in uploaded:
+            save_path = os.path.join(DATA_DIR, f.name)
+            with open(save_path, "wb") as out:
+                out.write(f.read())
+        st.success(f"✅ Uploaded {len(uploaded)} file(s) to '{DATA_DIR}'")
 
-# Vector Embedding And Vector Store
+    # Build / Refresh Vector Index
+    if st.button("🔄 Build / Refresh Vector Index"):
+        with st.spinner("🔍 Embedding and indexing documents..."):
+            try:
+                create_vector_store(DATA_DIR, INDEX_DIR)
+                st.success("✅ Vector index updated successfully!")
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
 
-from langchain.vectorstores import FAISS
+    # Show available PDFs
+    st.subheader("📂 Current PDFs")
+    pdf_list = [f for f in os.listdir(DATA_DIR) if f.lower().endswith(".pdf")]
+    if pdf_list:
+        for pdf in pdf_list:
+            st.write(f"📎 {pdf}")
+    else:
+        st.info("No PDFs found in 'data' folder.")
 
-## LLm Models
-from langchain.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
+# Main Chat Interface
+st.subheader("💬 Ask a question about your documents")
+query = st.text_input("Your question:")
 
-## Bedrock Clients
-bedrock=boto3.client(service_name="bedrock-runtime")
-bedrock_embeddings=BedrockEmbeddings(model_id="amazon.titan-embed-text-v1",client=bedrock)
+col1, col2 = st.columns(2)
+with col1:
+    model_choice = st.selectbox("Choose Model", ["Claude (Anthropic)", "Llama2 (Meta)"])
+with col2:
+    top_k = st.slider("Retriever top-k", min_value=1, max_value=10, value=3)
 
+if st.button("✨ Get Answer"):
+    if not query.strip():
+        st.warning("⚠️ Please enter a question.")
+    else:
+        try:
+            with st.spinner("📂 Loading vector store..."):
+                # Rebuild index if missing or empty
+                if not os.path.exists(INDEX_DIR) or not os.listdir(INDEX_DIR):
+                    st.info("📂 FAISS index not found. Creating new index from PDFs...")
+                    create_vector_store(DATA_DIR, INDEX_DIR)
 
-## Data ingestion
-def data_ingestion():
-    loader=PyPDFDirectoryLoader("data")
-    documents=loader.load()
+                vs = load_vector_store(INDEX_DIR)
 
-    # - in our testing Character split works better with this PDF data set
-    text_splitter=RecursiveCharacterTextSplitter(chunk_size=10000,
-                                                 chunk_overlap=1000)
-    
-    docs=text_splitter.split_documents(documents)
-    return docs
+            with st.spinner("🤖 Generating answer..."):
+                llm = get_claude_llm() if model_choice.startswith("Claude") else get_llama2_llm()
+                answer = run_rag(llm, vs, query, k=top_k)
 
-## Vector Embedding and vector store
+            st.success("✅ Done")
+            st.write(answer)
 
-def get_vector_store(docs):
-    vectorstore_faiss=FAISS.from_documents(
-        docs,
-        bedrock_embeddings
-    )
-    vectorstore_faiss.save_local("faiss_index")
-
-def get_claude_llm():
-    ##create the Anthropic Model
-    llm=Bedrock(model_id="ai21.j2-mid-v1",client=bedrock,
-                model_kwargs={'maxTokens':512})
-    
-    return llm
-
-def get_llama2_llm():
-    ##create the Anthropic Model
-    llm=Bedrock(model_id="meta.llama2-70b-chat-v1",client=bedrock,
-                model_kwargs={'max_gen_len':512})
-    
-    return llm
-
-prompt_template = """
-
-Human: Use the following pieces of context to provide a 
-concise answer to the question at the end but usse atleast summarize with 
-250 words with detailed explaantions. If you don't know the answer, 
-just say that you don't know, don't try to make up an answer.
-<context>
-{context}
-</context
-
-Question: {question}
-
-Assistant:"""
-
-PROMPT = PromptTemplate(
-    template=prompt_template, input_variables=["context", "question"]
-)
-
-def get_response_llm(llm,vectorstore_faiss,query):
-    qa = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever=vectorstore_faiss.as_retriever(
-        search_type="similarity", search_kwargs={"k": 3}
-    ),
-    return_source_documents=True,
-    chain_type_kwargs={"prompt": PROMPT}
-)
-    answer=qa({"query":query})
-    return answer['result']
-
-
-def main():
-    st.set_page_config("Chat PDF")
-    
-    st.header("Chat with PDF using AWS Bedrock💁")
-
-    user_question = st.text_input("Ask a Question from the PDF Files")
-
-    with st.sidebar:
-        st.title("Update Or Create Vector Store:")
-        
-        if st.button("Vectors Update"):
-            with st.spinner("Processing..."):
-                docs = data_ingestion()
-                get_vector_store(docs)
-                st.success("Done")
-
-    if st.button("Claude Output"):
-        with st.spinner("Processing..."):
-            faiss_index = FAISS.load_local("faiss_index", bedrock_embeddings)
-            llm=get_claude_llm()
-            
-            #faiss_index = get_vector_store(docs)
-            st.write(get_response_llm(llm,faiss_index,user_question))
-            st.success("Done")
-
-    if st.button("Llama2 Output"):
-        with st.spinner("Processing..."):
-            faiss_index = FAISS.load_local("faiss_index", bedrock_embeddings)
-            llm=get_llama2_llm()
-            
-            #faiss_index = get_vector_store(docs)
-            st.write(get_response_llm(llm,faiss_index,user_question))
-            st.success("Done")
-
-if __name__ == "__main__":
-    main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        except FileNotFoundError:
+            st.error("⚠️ Vector index not found! Please upload PDFs first.")
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
