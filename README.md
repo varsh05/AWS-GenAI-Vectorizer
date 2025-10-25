@@ -32,3 +32,4 @@ This project replicates a real-world use case by combining:
 
 - 🔹 **Text Vectorizer Tab**  
   → Enter any sentence or paragraph and instantly generate its
+
